@@ -1,0 +1,182 @@
+==================================================
+Q1. Stay history of one guest, looked up by email
+==================================================
+                                                                        QUERY PLAN                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2102.31..2102.32 rows=1 width=35) (actual time=16.668..16.672 rows=3.00 loops=1)
+   Sort Key: b.check_in DESC
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=967
+   ->  Nested Loop  (cost=8.45..2102.30 rows=1 width=35) (actual time=12.365..16.612 rows=3.00 loops=1)
+         Join Filter: (rt.room_type_id = r.room_type_id)
+         Rows Removed by Join Filter: 7
+         Buffers: shared hit=964
+         ->  Nested Loop  (cost=8.45..2101.21 rows=1 width=28) (actual time=12.348..16.587 rows=3.00 loops=1)
+               Join Filter: (r.room_id = b.room_id)
+               Rows Removed by Join Filter: 87
+               Buffers: shared hit=961
+               ->  Hash Join  (cost=8.45..2098.86 rows=1 width=24) (actual time=12.281..16.497 rows=3.00 loops=1)
+                     Hash Cond: (b.guest_id = g.guest_id)
+                     Buffers: shared hit=958
+                     ->  Seq Scan on booking b  (cost=0.00..1854.12 rows=90012 width=16) (actual time=0.025..8.445 rows=90012.00 loops=1)
+                           Buffers: shared hit=954
+                     ->  Hash  (cost=8.44..8.44 rows=1 width=16) (actual time=0.090..0.091 rows=1.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                           Buffers: shared hit=4
+                           ->  Index Scan using guest_email_key on guest g  (cost=0.42..8.44 rows=1 width=16) (actual time=0.078..0.079 rows=1.00 loops=1)
+                                 Index Cond: ((email)::text = 'guest4521@example.com'::text)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+               ->  Seq Scan on room r  (cost=0.00..1.60 rows=60 width=12) (actual time=0.017..0.019 rows=30.00 loops=3)
+                     Buffers: shared hit=3
+         ->  Seq Scan on room_type rt  (cost=0.00..1.04 rows=4 width=15) (actual time=0.005..0.005 rows=3.33 loops=3)
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=364
+ Planning Time: 2.058 ms
+ Execution Time: 16.773 ms
+(32 rows)
+
+==================================================
+Q2. Deluxe rooms FREE for 20-22 Nov 2026 (availability search)
+==================================================
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop Anti Join  (cost=0.42..1983.00 rows=13 width=20) (actual time=1.436..9.964 rows=15.00 loops=1)
+   Buffers: shared hit=14954
+   ->  Nested Loop  (cost=0.14..15.13 rows=15 width=24) (actual time=0.042..0.091 rows=15.00 loops=1)
+         Join Filter: (rt.room_type_id = r.room_type_id)
+         Rows Removed by Join Filter: 44
+         Buffers: shared hit=3
+         ->  Index Scan using room_pkey on room r  (cost=0.14..13.19 rows=59 width=12) (actual time=0.005..0.029 rows=59.00 loops=1)
+               Filter: ((status)::text = 'available'::text)
+               Rows Removed by Filter: 1
+               Index Searches: 1
+               Buffers: shared hit=2
+         ->  Materialize  (cost=0.00..1.05 rows=1 width=20) (actual time=0.001..0.001 rows=1.00 loops=59)
+               Storage: Memory  Maximum Storage: 17kB
+               Buffers: shared hit=1
+               ->  Seq Scan on room_type rt  (cost=0.00..1.05 rows=1 width=20) (actual time=0.030..0.030 rows=1.00 loops=1)
+                     Filter: ((name)::text = 'Deluxe'::text)
+                     Rows Removed by Filter: 3
+                     Buffers: shared hit=1
+   ->  Index Scan using no_double_booking on booking b  (cost=0.28..131.19 rows=1 width=4) (actual time=0.657..0.657 rows=0.00 loops=15)
+         Index Cond: (room_id = r.room_id)
+         Filter: ((check_in < '2026-11-22'::date) AND (check_out > '2026-11-20'::date))
+         Rows Removed by Filter: 1424
+         Index Searches: 15
+         Buffers: shared hit=14951
+ Planning:
+   Buffers: shared hit=25
+ Planning Time: 0.224 ms
+ Execution Time: 9.994 ms
+(28 rows)
+
+==================================================
+Q3. Monthly revenue for 2025
+==================================================
+                                                                                              QUERY PLAN                                                                                              
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2370.00..2373.66 rows=1463 width=40) (actual time=5.798..5.799 rows=12.00 loops=1)
+   Sort Key: (date_trunc('month'::text, paid_at))
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=739
+   ->  HashAggregate  (cost=2271.14..2293.08 rows=1463 width=40) (actual time=5.778..5.783 rows=12.00 loops=1)
+         Group Key: date_trunc('month'::text, paid_at)
+         Batches: 1  Memory Usage: 65kB
+         Buffers: shared hit=736
+         ->  Seq Scan on payment  (cost=0.00..2244.65 rows=5297 width=13) (actual time=0.015..5.239 rows=5191.00 loops=1)
+               Filter: ((paid_at >= '2025-01-01 00:00:00+01'::timestamp with time zone) AND (paid_at < '2026-01-01 00:00:00+01'::timestamp with time zone) AND ((status)::text = 'successful'::text))
+               Rows Removed by Filter: 80261
+               Buffers: shared hit=736
+ Planning:
+   Buffers: shared hit=54
+ Planning Time: 0.221 ms
+ Execution Time: 5.841 ms
+(16 rows)
+
+==================================================
+Q4. Top 5 breakfast items in the last 12 months of data
+==================================================
+                                                                                        QUERY PLAN                                                                                        
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4351.59..4351.60 rows=5 width=23) (actual time=19.600..19.603 rows=5.00 loops=1)
+   Buffers: shared hit=1319
+   ->  Sort  (cost=4351.59..4351.61 rows=9 width=23) (actual time=19.600..19.602 rows=5.00 loops=1)
+         Sort Key: (sum(oi.quantity)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=1319
+         ->  HashAggregate  (cost=4351.36..4351.45 rows=9 width=23) (actual time=19.547..19.550 rows=9.00 loops=1)
+               Group Key: m.name
+               Batches: 1  Memory Usage: 32kB
+               Buffers: shared hit=1316
+               ->  Hash Join  (cost=1376.48..4315.38 rows=7196 width=17) (actual time=2.937..18.651 rows=7296.00 loops=1)
+                     Hash Cond: (oi.menu_item_id = m.menu_item_id)
+                     Buffers: shared hit=1316
+                     ->  Hash Join  (cost=1375.27..4286.39 rows=7196 width=6) (actual time=2.920..17.903 rows=7296.00 loops=1)
+                           Hash Cond: (oi.order_id = o.order_id)
+                           Buffers: shared hit=1315
+                           ->  Seq Scan on order_item oi  (cost=0.00..2487.32 rows=161432 width=10) (actual time=0.004..6.563 rows=161432.00 loops=1)
+                                 Buffers: shared hit=873
+                           ->  Hash  (cost=1341.85..1341.85 rows=2674 width=4) (actual time=2.900..2.900 rows=2732.00 loops=1)
+                                 Buckets: 4096  Batches: 1  Memory Usage: 129kB
+                                 Buffers: shared hit=442
+                                 ->  Seq Scan on breakfast_order o  (cost=0.00..1341.85 rows=2674 width=4) (actual time=2.519..2.707 rows=2732.00 loops=1)
+                                       Filter: ((ordered_at >= '2025-09-01 00:00:00+01'::timestamp with time zone) AND (ordered_at < '2026-09-01 00:00:00+01'::timestamp with time zone))
+                                       Rows Removed by Filter: 57258
+                                       Buffers: shared hit=442
+                     ->  Hash  (cost=1.09..1.09 rows=9 width=19) (actual time=0.009..0.010 rows=9.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                           Buffers: shared hit=1
+                           ->  Seq Scan on menu_item m  (cost=0.00..1.09 rows=9 width=19) (actual time=0.006..0.007 rows=9.00 loops=1)
+                                 Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=134
+ Planning Time: 0.506 ms
+ Execution Time: 19.655 ms
+(34 rows)
+
+==================================================
+Q5. Front-desk arrivals list for one day
+==================================================
+                                                             QUERY PLAN                                                              
+-------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.43..2774.61 rows=57 width=20) (actual time=6.301..6.851 rows=58.00 loops=1)
+   Buffers: shared hit=1244
+   ->  Nested Loop  (cost=0.29..2753.85 rows=57 width=20) (actual time=6.294..6.811 rows=58.00 loops=1)
+         Buffers: shared hit=1128
+         ->  Seq Scan on booking b  (cost=0.00..2304.18 rows=57 width=12) (actual time=6.262..6.651 rows=58.00 loops=1)
+               Filter: (((status)::text <> 'cancelled'::text) AND (check_in = '2025-03-15'::date))
+               Rows Removed by Filter: 89954
+               Buffers: shared hit=954
+         ->  Index Scan using guest_pkey on guest g  (cost=0.29..7.89 rows=1 width=16) (actual time=0.002..0.002 rows=1.00 loops=58)
+               Index Cond: (guest_id = b.guest_id)
+               Index Searches: 58
+               Buffers: shared hit=174
+   ->  Index Scan using room_pkey on room r  (cost=0.14..0.37 rows=1 width=8) (actual time=0.000..0.000 rows=1.00 loops=58)
+         Index Cond: (room_id = b.room_id)
+         Index Searches: 58
+         Buffers: shared hit=116
+ Planning:
+   Buffers: shared hit=10
+ Planning Time: 0.191 ms
+ Execution Time: 6.870 ms
+(20 rows)
+
+==================================================
+Q6. Count of completed stays (low-selectivity filter)
+==================================================
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=2292.86..2292.87 rows=1 width=8) (actual time=11.278..11.279 rows=1.00 loops=1)
+   Buffers: shared hit=954
+   ->  Seq Scan on booking  (cost=0.00..2079.15 rows=85484 width=0) (actual time=0.004..8.590 rows=85444.00 loops=1)
+         Filter: ((status)::text = 'checked_out'::text)
+         Rows Removed by Filter: 4568
+         Buffers: shared hit=954
+ Planning:
+   Buffers: shared hit=9
+ Planning Time: 0.100 ms
+ Execution Time: 11.307 ms
+(10 rows)
+
