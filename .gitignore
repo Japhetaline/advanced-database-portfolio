@@ -1,0 +1,10 @@
+# secrets — never commit
+.env
+*.env
+# large or generated files
+*.dump
+*.backup
+node_modules/
+# OS junk
+.DS_Store
+Thumbs.db
