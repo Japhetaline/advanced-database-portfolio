@@ -1,0 +1,91 @@
+Table guest {
+  guest_id int [pk, increment]
+  first_name varchar
+  last_name varchar
+  email varchar [unique, not null]
+  phone varchar
+  nationality varchar
+  created_at timestamptz
+}
+
+Table room_type {
+  room_type_id int [pk, increment]
+  name varchar [unique]
+  description text
+  max_occupancy smallint
+  price_per_night numeric
+}
+
+Table room {
+  room_id int [pk, increment]
+  room_number varchar [unique]
+  room_type_id int [ref: > room_type.room_type_id]
+  floor smallint
+  status varchar
+}
+
+Table staff {
+  staff_id int [pk, increment]
+  first_name varchar
+  last_name varchar
+  role varchar
+  email varchar [unique]
+  hired_on date
+}
+
+Table booking {
+  booking_id int [pk, increment]
+  guest_id int [ref: > guest.guest_id]
+  room_id int [ref: > room.room_id]
+  staff_id int [ref: > staff.staff_id, null]
+  check_in date
+  check_out date
+  num_guests smallint
+  status varchar
+  booking_channel varchar
+  created_at timestamptz
+  Note: 'EXCLUDE: no overlapping active bookings per room'
+}
+
+Table payment {
+  payment_id int [pk, increment]
+  booking_id int [ref: > booking.booking_id]
+  amount numeric
+  method varchar
+  status varchar
+  paid_at timestamptz
+}
+
+Table menu_item {
+  menu_item_id int [pk, increment]
+  name varchar [unique]
+  category varchar
+  price numeric
+  is_available boolean
+}
+
+Table breakfast_order {
+  order_id int [pk, increment]
+  booking_id int [ref: > booking.booking_id]
+  ordered_at timestamptz
+  status varchar
+  notes varchar
+}
+
+Table order_item {
+  order_id int [ref: > breakfast_order.order_id]
+  menu_item_id int [ref: > menu_item.menu_item_id]
+  quantity smallint
+  unit_price numeric
+  indexes {
+    (order_id, menu_item_id) [pk]
+  }
+}
+
+Table review {
+  review_id int [pk, increment]
+  booking_id int [unique, ref: - booking.booking_id]
+  rating smallint
+  comment text
+  created_at timestamptz
+}
