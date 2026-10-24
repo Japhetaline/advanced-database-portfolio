@@ -1,0 +1,171 @@
+
+=== Q1. Menu items where the guest chooses a protein (query inside a nested field) ===
+[
+  {
+    name: 'Jollof Breakfast Plate',
+    options: {
+      protein: [
+        'chicken',
+        'fish',
+        'egg'
+      ]
+    }
+  },
+  {
+    name: 'Full English Breakfast',
+    options: {
+      protein: [
+        'sausage',
+        'bacon'
+      ]
+    }
+  }
+]
+
+=== Q2. Available vegetarian items under N5,000, cheapest first ===
+[
+  {
+    name: 'Tea',
+    price: 1500
+  },
+  {
+    name: 'Coffee',
+    price: 2000
+  },
+  {
+    name: 'Akara and Pap',
+    price: 3500
+  },
+  {
+    name: 'Pancakes with Honey',
+    price: 4000
+  },
+  {
+    name: 'Yam and Egg Sauce',
+    price: 4500
+  }
+]
+
+=== Q3. UPDATE: orange juice is back in stock, and gains a new option ===
+{
+  _id: 'orange_juice',
+  name: 'Fresh Orange Juice',
+  category: 'drink',
+  price: 2500,
+  available: true,
+  options: {
+    size: {
+      regular: 2500,
+      large: 3500
+    },
+    ice: [
+      true,
+      false
+    ]
+  },
+  dietary_tags: [
+    'vegan'
+  ]
+}
+
+=== Q4. Guests whose profile says vegetarian (for the kitchen) ===
+[
+  {
+    _id: 3,
+    name: {
+      first: 'Kofi',
+      last: 'Mensah'
+    },
+    preferences: {
+      dietary: [
+        'vegetarian'
+      ]
+    }
+  }
+]
+
+=== Q5. AGGREGATION: average rating and number of reviews per year ===
+[
+  {
+    reviews: 1000,
+    year: 2022,
+    avg_rating: 3
+  },
+  {
+    reviews: 1000,
+    year: 2023,
+    avg_rating: 3
+  },
+  {
+    reviews: 1000,
+    year: 2024,
+    avg_rating: 3
+  },
+  {
+    reviews: 1000,
+    year: 2025,
+    avg_rating: 3
+  },
+  {
+    reviews: 1003,
+    year: 2026,
+    avg_rating: 3
+  }
+]
+
+=== Q6. AGGREGATION: most common complaint tags in 1-2 star reviews ===
+[
+  {
+    _id: 'food',
+    times: 446
+  },
+  {
+    _id: 'value',
+    times: 445
+  },
+  {
+    _id: 'wifi',
+    times: 445
+  },
+  {
+    _id: 'breakfast-delay',
+    times: 444
+  },
+  {
+    _id: 'staff',
+    times: 444
+  }
+]
+
+=== Q7. $lookup: real reviews joined with the guest's profile (like a SQL JOIN) ===
+[
+  {
+    rating: 5,
+    comment: 'Lovely garden view and the akara was perfect.',
+    guest: 'Adaeze',
+    tier: 'gold'
+  },
+  {
+    rating: 4,
+    comment: 'Great suite. Breakfast arrived 15 minutes late.',
+    guest: 'Kofi',
+    tier: 'silver'
+  },
+  {
+    rating: 5,
+    comment: 'The beach chalet is worth every naira.',
+    guest: 'Sarah',
+    tier: 'silver'
+  }
+]
+
+=== Q8. explain() BEFORE index: 5-star reviews since Jan 2026 ===
+Before: COLLSCAN (every document read) | documents examined: 5003 | returned: 202 | time: 5 ms
+Created index { rating: 1, created_at: -1 }
+After : IXSCAN (index used) | documents examined: 202 | returned: 202 | time: 3 ms
+
+Indexes on reviews:
+[
+  '_id_',
+  'rating_1_created_at_-1'
+]
